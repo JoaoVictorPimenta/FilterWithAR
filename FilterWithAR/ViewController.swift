@@ -13,27 +13,36 @@ class ViewController: UIViewController, ARSCNViewDelegate {
 
     @IBOutlet var sceneView: ARSCNView!
     
+    @IBOutlet weak var labelView: UIView!
+    
+    @IBOutlet weak var faceLabel: UILabel!
+    //variável para popular a label
+    var analysis = ""
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        //arrendonamento da Label
+        labelView.layer.cornerRadius = 10
         // Set the view's delegate
         sceneView.delegate = self
         
         // Show statistics such as fps and timing information
         sceneView.showsStatistics = true
         
-        // Create a new scene
-        let scene = SCNScene(named: "art.scnassets/ship.scn")!
+        //verificação de aceso a camera e compatibilidade
+        guard ARFaceTrackingConfiguration.isSupported
+        else {
+            fatalError("Facetracking não suportado.")
+        }
         
-        // Set the scene to the view
-        sceneView.scene = scene
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
         // Create a session configuration
-        let configuration = ARWorldTrackingConfiguration()
+        let configuration = ARFaceTrackingConfiguration()
 
         // Run the view's session
         sceneView.session.run(configuration)
@@ -45,30 +54,50 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         // Pause the view's session
         sceneView.session.pause()
     }
-
-    // MARK: - ARSCNViewDelegate
     
-/*
-    // Override to create and configure nodes for anchors added to the view's session.
+    // MARK: - func renderer com nodeFor
     func renderer(_ renderer: SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
-        let node = SCNNode()
-     
-        return node
-    }
-*/
-    
-    func session(_ session: ARSession, didFailWithError error: Error) {
-        // Present an error message to the user
-        
-    }
-    
-    func sessionWasInterrupted(_ session: ARSession) {
-        // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        
+        if let device = sceneView.device {
+            let faceMeshGeometry = ARSCNFaceGeometry(device: device)
+            let node = SCNNode(geometry: faceMeshGeometry)
+            node.geometry?.firstMaterial?.fillMode = .lines
+            //adicionar um node com imagem acima do node ja existe
+            
+            return node
+        } else {
+            fatalError("Nenhum dispositivo encontrado.")
+        }
     }
     
-    func sessionInterruptionEnded(_ session: ARSession) {
-        // Reset tracking and/or remove existing anchors if consistent tracking is required
+    // MARK: - func renderer com didUpdate
+    func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
+        if let faceAnchor = anchor as? ARFaceAnchor, let faceGeometry = node.geometry as? ARSCNFaceGeometry {
+            faceGeometry.update(from: faceAnchor.geometry)
+            
+            expression(anchor: faceAnchor)
+            DispatchQueue.main.async {
+                self.faceLabel.text = self.analysis
+            }
+        }
         
+        
+    }
+    //MANIPULAÇÃO DAS EXPRESSÕES
+    func expression(anchor: ARFaceAnchor) {
+        let cheekPuff = anchor.blendShapes[.cheekPuff]
+        let tongue = anchor.blendShapes[.tongueOut]
+        self.analysis = ""
+        
+        if let cheekPuffValeue = cheekPuff?.decimalValue {
+            if cheekPuffValeue > 0.1 {
+                self.analysis += "Bochechas, bochechas, bochechas."
+            }
+        }
+        
+        if let tongueValue = tongue?.decimalValue {
+            if tongueValue > 0.1 {
+                self.analysis += "línguas, línguas, línguas."
+            }
+        }
     }
 }
