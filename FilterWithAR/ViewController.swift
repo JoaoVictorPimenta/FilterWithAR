@@ -61,7 +61,14 @@ class ViewController: UIViewController, ARSCNViewDelegate {
             let faceMeshGeometry = ARSCNFaceGeometry(device: device)
             let node = SCNNode(geometry: faceMeshGeometry)
             node.geometry?.firstMaterial?.fillMode = .lines
+            node.geometry?.firstMaterial?.transparency = 0.0
+            
             //adicionar um node com imagem acima do node ja existe
+            let image = UIImage(named: "glass")
+            let glass = SCNNode(geometry: SCNPlane(width: 0.2, height: 0.1))
+            glass.geometry?.firstMaterial?.diffuse.contents = image
+            glass.position = SCNVector3(x: 0.0, y: 0.03, z: 0.05)
+            node.addChildNode(glass)
             
             return node
         } else {
